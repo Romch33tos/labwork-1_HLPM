@@ -121,6 +121,17 @@ class AccessCommand : Subcommand(
   }
 }
 
+@OptIn(ExperimentalCli::class)
+class HelpCommand : Subcommand(
+  "help",
+  "Показать справку"
+) {
+  override fun execute() {
+    printHelp()
+    kotlin.system.exitProcess(EXIT_HELP)
+  }
+}
+
 fun processRequest(
   login: String,
   password: String,
@@ -190,4 +201,26 @@ fun printHelp() {
     |  8 — превышение максимального объёма
     """.trimMargin()
   )
+}
+
+@OptIn(ExperimentalCli::class)
+fun main(args: Array<String>) {
+  if (args.isEmpty()) {
+    printHelp()
+    kotlin.system.exitProcess(EXIT_HELP)
+  }
+  if (args.contains("-h") || args.contains("--help")) {
+    printHelp()
+    kotlin.system.exitProcess(EXIT_HELP)
+  }
+
+  val parser = kotlinx.cli.ArgParser("app")
+  parser.subcommands(AccessCommand())
+
+  try {
+    parser.parse(args)
+  } catch (exception: Exception) {
+    printHelp()
+    kotlin.system.exitProcess(EXIT_BAD_FORMAT)
+  }
 }
