@@ -50,3 +50,14 @@
 ```bash
 $ java -jar app.jar --login alice --password qwerty --action read --resource A.B.C --volume 10
 ```
+успешная сборка
+<img width="281" height="62" alt="image" src="https://github.com/user-attachments/assets/9b5e4f64-a8ec-4b46-bbee-435afa29ab11" />
+
+справка
+<img width="638" height="344" alt="image" src="https://github.com/user-attachments/assets/38779f15-200c-4d64-9c89-f26815696f96" />
+
+тестирование
+<img width="495" height="199" alt="image" src="https://github.com/user-attachments/assets/0fc0ef00-1b63-4966-a3fd-60b9496aa29e" />
+
+ввод данных в программу
+<img width="642" height="77" alt="image" src="https://github.com/user-attachments/assets/a864ff2a-ab2c-4003-b0fe-f69bb22eb00b" />
