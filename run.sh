@@ -8,3 +8,6 @@ if [ ! -f "${JAR_NAME}" ]; then
   echo "Сначала выполните ./build.sh"
   exit 1
 fi
+
+java -cp "${JAR_NAME};${KOTLINX_CLI_JAR}" MainKt "$@"
+exit $?
