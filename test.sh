@@ -65,3 +65,11 @@ run_case "превышение максимального объёма" 8 \
 total_count=$((total_count + 1))
 run_case "некорректный объём" 7 \
   --login alice --password qwerty --action read --resource A --volume 0
+
+echo "${success_count}/${total_count} успешных тестов"
+
+if [ "${success_count}" -eq "${total_count}" ]; then
+  exit 0
+else
+  exit 1
+fi
