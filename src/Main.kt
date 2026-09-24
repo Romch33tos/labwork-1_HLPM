@@ -1,7 +1,6 @@
+import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.ExperimentalCli
-import kotlinx.cli.Subcommand
-import kotlinx.cli.default
 import kotlinx.cli.required
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -50,7 +49,8 @@ object Storage {
     Resource("A", "", 100),
     Resource("B", "A", 50),
     Resource("C", "A.B", 25),
-    Resource("D", "A", 10)
+    Resource("D", "A", 10),
+    Resource("E", "", 30)
   )
 
   val accessRules: List<AccessRule> = listOf(
@@ -102,34 +102,6 @@ object ResourceValidator {
   }
 
   fun isValidVolume(volume: Int): Boolean = volume > 0
-}
-
-@OptIn(ExperimentalCli::class)
-class AccessCommand : Subcommand(
-  "access",
-  "Запрос доступа к ресурсу"
-) {
-  val login by option(ArgType.String, "login", "l", "Логин пользователя").required()
-  val password by option(ArgType.String, "password", "p", "Пароль пользователя").required()
-  val action by option(ArgType.String, "action", "a", "Действие: read, write, execute").required()
-  val resource by option(ArgType.String, "resource", "r", "Путь до ресурса, например A.B.C").required()
-  val volume by option(ArgType.Int, "volume", "v", "Объём запрашиваемого ресурса").required()
-
-  override fun execute() {
-    val exitCode = processRequest(login, password, action, resource, volume)
-    kotlin.system.exitProcess(exitCode)
-  }
-}
-
-@OptIn(ExperimentalCli::class)
-class HelpCommand : Subcommand(
-  "help",
-  "Показать справку"
-) {
-  override fun execute() {
-    printHelp()
-    kotlin.system.exitProcess(EXIT_HELP)
-  }
 }
 
 fun processRequest(
@@ -214,8 +186,13 @@ fun main(args: Array<String>) {
     kotlin.system.exitProcess(EXIT_HELP)
   }
 
-  val parser = kotlinx.cli.ArgParser("app")
-  parser.subcommands(AccessCommand())
+  val parser = ArgParser("app")
+
+  val login by parser.option(ArgType.String, "login", "l", "Логин пользователя").required()
+  val password by parser.option(ArgType.String, "password", "p", "Пароль пользователя").required()
+  val action by parser.option(ArgType.String, "action", "a", "Действие: read, write, execute").required()
+  val resource by parser.option(ArgType.String, "resource", "r", "Путь до ресурса, например A.B.C").required()
+  val volume by parser.option(ArgType.Int, "volume", "v", "Объём запрашиваемого ресурса").required()
 
   try {
     parser.parse(args)
@@ -223,4 +200,7 @@ fun main(args: Array<String>) {
     printHelp()
     kotlin.system.exitProcess(EXIT_BAD_FORMAT)
   }
+
+  val exitCode = processRequest(login, password, action, resource, volume)
+  kotlin.system.exitProcess(exitCode)
 }
