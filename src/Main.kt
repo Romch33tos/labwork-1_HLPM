@@ -104,6 +104,23 @@ object ResourceValidator {
   fun isValidVolume(volume: Int): Boolean = volume > 0
 }
 
+@OptIn(ExperimentalCli::class)
+class AccessCommand : Subcommand(
+  "access",
+  "Запрос доступа к ресурсу"
+) {
+  val login by option(ArgType.String, "login", "l", "Логин пользователя").required()
+  val password by option(ArgType.String, "password", "p", "Пароль пользователя").required()
+  val action by option(ArgType.String, "action", "a", "Действие: read, write, execute").required()
+  val resource by option(ArgType.String, "resource", "r", "Путь до ресурса, например A.B.C").required()
+  val volume by option(ArgType.Int, "volume", "v", "Объём запрашиваемого ресурса").required()
+
+  override fun execute() {
+    val exitCode = processRequest(login, password, action, resource, volume)
+    kotlin.system.exitProcess(exitCode)
+  }
+}
+
 fun processRequest(
   login: String,
   password: String,
