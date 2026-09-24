@@ -103,3 +103,45 @@ object ResourceValidator {
 
   fun isValidVolume(volume: Int): Boolean = volume > 0
 }
+
+fun processRequest(
+  login: String,
+  password: String,
+  action: String,
+  resourcePath: String,
+  volume: Int
+): Int {
+  if (!ResourceValidator.isValidPath(resourcePath) || !ResourceValidator.isValidVolume(volume)) {
+    return EXIT_BAD_FORMAT
+  }
+
+  val user = Storage.findUser(login) ?: return EXIT_BAD_LOGIN
+
+  val computedHash = Storage.hashPassword(password, user.salt)
+  if (!MessageDigest.isEqual(user.passwordHash, computedHash)) {
+    return EXIT_BAD_PASSWORD
+  }
+
+  val actionName = action.lowercase()
+  val isRead = actionName == "read"
+  val isWrite = actionName == "write"
+  val isExecute = actionName == "execute"
+  if (!isRead && !isWrite && !isExecute) {
+    return EXIT_UNKNOWN_ACTION
+  }
+
+  val resource = Storage.findResource(resourcePath) ?: return EXIT_NO_RESOURCE
+
+  val rule = Storage.findEffectiveRule(login, resourcePath) ?: return EXIT_NO_ACCESS
+
+  val hasPermission = when {
+    isRead -> rule.canRead
+    isWrite -> rule.canWrite
+    else -> rule.canExecute
+  }
+  if (!hasPermission) return EXIT_NO_ACCESS
+
+  if (volume > resource.maxVolume) return EXIT_VOLUME_EXCEEDED
+
+  return EXIT_SUCCESS
+}
