@@ -8,7 +8,7 @@ run_case() {
   local expected_code="$2"
   shift 2
 
-  java -cp "${JAR_NAME};${KOTLINX_CLI_JAR}" MainKt "$@" > /dev/null 2>&1
+  java -cp "${JAR_NAME}:${KOTLINX_CLI_JAR}" MainKt "$@" > /dev/null 2>&1
   local actual_code=$?
 
   if [ "${actual_code}" -eq "${expected_code}" ]; then
