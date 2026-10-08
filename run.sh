@@ -9,5 +9,5 @@ if [ ! -f "${JAR_NAME}" ]; then
   exit 1
 fi
 
-java -cp "${JAR_NAME};${KOTLINX_CLI_JAR}" MainKt "$@"
+java -cp "${JAR_NAME}:${KOTLINX_CLI_JAR}" MainKt "$@"
 exit $?
