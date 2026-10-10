@@ -122,3 +122,47 @@ class AccessService(
     }
 }
 ```
+### S3. `Main.main` совмещает парсинг, валидацию и сборку зависимостей
+
+**Место:** `Main.kt` → `fun main()`
+
+Функция `main()` выполняет пять разных задач:
+
+```kotlin
+fun main(args: Array<String>) {
+    if (args.isEmpty()) { printHelp(); exitProcess(EXIT_HELP) }         // 1. help
+    if (args.contains("-h") || args.contains("--help")) { /* ... */ }    // 1. help
+
+    val map = parseKeyValues(args)                                       // 2. парсинг
+    if (map == null) { printHelp(); exitProcess(EXIT_BAD_FORMAT) }
+
+    for (key in REQUIRED_KEYS) {                                         // 3. валидация
+        if (map[key].isNullOrBlank()) { printHelp(); exitProcess(EXIT_BAD_FORMAT) }
+    }
+    val volume = map["--volume"]!!.toIntOrNull() ?: run { /* ... */ }
+
+    val service = AccessService(                                         // 4. сборка графа
+        users = StorageUserRepository(),
+        resources = StorageResourceRepository(),
+        rules = StorageRuleRepository()
+    )
+
+    val code = service.check(AccessRequest(/* ... */))
+    kotlin.system.exitProcess(code)                                      // 5. exit
+}
+```
+
+**Решение.** Разделить на четыре компонента, оставив `main()` тонким:
+
+```kotlin
+fun main(args: Array<String>) {
+    val parser = CliArgumentParser()
+    val validator = CliArgumentValidator()
+
+    val parsed = parser.parse(args) ?: run { HelpPrinter.print(); exitProcess(EXIT_BAD_FORMAT) }
+    val request = validator.validate(parsed) ?: run { HelpPrinter.print(); exitProcess(EXIT_BAD_FORMAT) }
+
+    val service = ApplicationFactory.create()
+    exitProcess(service.check(request))
+}
+```
