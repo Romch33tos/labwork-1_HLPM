@@ -421,3 +421,49 @@ interface RuleRepository {
 
 - «Толстых» интерфейсов нет, ни один клиент не вынужден реализовывать или вызывать методы, которые ему не нужны.
 - `AccessService` использует **все** методы внедрённых интерфейсов.
+
+## D — Dependency Inversion Principle
+
+> Модули верхнего уровня не должны зависеть от модулей нижнего уровня; оба должны зависеть от абстракций.
+
+### D1. Репозитории зависят от синглтона `Storage`
+
+**Место:** `AccessService.kt` → `StorageUserRepository`, `StorageResourceRepository`, `StorageRuleRepository`
+
+```kotlin
+class StorageUserRepository : UserRepository {
+    override fun findUser(login: String): User? = Storage.findUser(login)
+    override fun verifyPassword(user: User, password: String): Boolean =
+        MessageDigest.isEqual(user.passwordHash, Storage.hashPassword(password, user.salt))
+}
+
+class StorageResourceRepository : ResourceRepository {
+    override fun findResource(path: String): Resource? = Storage.findResource(path)
+}
+
+class StorageRuleRepository : RuleRepository {
+    override fun findEffectiveRule(login: String, resourcePath: String): AccessRule? =
+        Storage.findEffectiveRule(login, resourcePath)
+}
+```
+
+Все три класса жёстко привязаны к глобальному `object Storage`. Это значит:
+
+- нельзя подменить хранилище в тестах;
+- нельзя использовать разные хранилища для разных сценариев;
+- `StorageUserRepository` дополнительно зависит от `MessageDigest` и `Storage.hashPassword`, то есть от инфраструктуры криптографии.
+
+**Решение.** Внедрять зависимости через конструктор:
+
+```kotlin
+class StorageUserRepository(
+    private val storage: UserStorage,
+    private val hasher: PasswordHasher
+) : UserRepository {
+    override fun findUser(login: String): User? = storage.findByLogin(login)
+    override fun verifyPassword(user: User, password: String): Boolean =
+        MessageDigest.isEqual(user.passwordHash.bytes, hasher.hash(password, user.salt))
+}
+```
+
+`UserStorage` и `PasswordHasher` — интерфейсы в доменном слое. Конкретные `InMemoryUserStorage` и `Sha256PasswordHasher` создаются в composition root (`Main`).
