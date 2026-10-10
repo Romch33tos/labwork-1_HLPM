@@ -513,3 +513,49 @@ class AccessService(
     }
 }
 ```
+### D3. `Main` знает о конкретных реализациях
+
+**Место:** `Main.kt` → `fun main()`
+
+```kotlin
+val service = AccessService(
+    users = StorageUserRepository(),
+    resources = StorageResourceRepository(),
+    rules = StorageRuleRepository()
+)
+```
+
+`main()` создаёт конкретные реализации репозиториев. Формально это **допустимо** — `main` является composition root, и кто-то должен собирать граф зависимостей. Однако:
+
+- логика сборки смешана с парсингом и валидацией (см. нарушение S3);
+- при росте проекта `main` превратится в свалку из `new`.
+
+**Решение.** Вынести сборку в отдельный класс `ApplicationFactory`:
+
+```kotlin
+object ApplicationFactory {
+    fun create(): AccessService {
+        val hasher = Sha256PasswordHasher()
+        val userStorage = InMemoryUserStorage(Storage.users)
+        val resourceStorage = InMemoryResourceStorage(Storage.resources)
+        val ruleStorage = InMemoryRuleStorage(Storage.accessRules)
+        val validator = RegexRequestValidator(ValidationRules())
+
+        return AccessService(
+            users = StorageUserRepository(userStorage, hasher),
+            resources = StorageResourceRepository(resourceStorage),
+            rules = StorageRuleRepository(ruleStorage),
+            validator = validator
+        )
+    }
+}
+```
+
+Тогда `main()` становится тривиальным:
+
+```kotlin
+fun main(args: Array<String>) {
+    val service = ApplicationFactory.create()
+    exitProcess(service.check(parseAndValidate(args)))
+}
+```
