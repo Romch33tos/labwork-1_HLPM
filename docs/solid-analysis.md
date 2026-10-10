@@ -380,3 +380,44 @@ class RequestValidator(private val rules: ValidationRules) {
 ```
 
 Теперь правила валидации можно менять без правки классов.
+
+## L — Liskov Substitution Principle
+
+> Наследники должны быть заменяемы своими базовыми типами без изменения корректности.
+
+**Нарушений не выявлено.**
+
+Обоснование:
+
+- Иерархий наследования в проекте нет — все модели объявлены как `data class`, `class` или `enum class` без родителей (кроме неявного `Any`).
+- Интерфейсы `UserRepository`, `ResourceRepository`, `RuleRepository` реализуются одним классом каждый. Поведение полностью соответствует контракту: методы возвращают `null` при отсутствии данных, не бросают неожиданных исключений, не нарушают постусловий.
+
+---
+
+## I — Interface Segregation Principle
+
+> Клиенты не должны зависеть от методов, которые они не используют.
+
+**Нарушений не выявлено.**
+
+Обоснование:
+
+- Каждый интерфейс содержит ровно один-два метода:
+
+```kotlin
+interface UserRepository {
+    fun findUser(login: String): User?
+    fun verifyPassword(user: User, password: String): Boolean
+}
+
+interface ResourceRepository {
+    fun findResource(path: String): Resource?
+}
+
+interface RuleRepository {
+    fun findEffectiveRule(login: String, resourcePath: String): AccessRule?
+}
+```
+
+- «Толстых» интерфейсов нет, ни один клиент не вынужден реализовывать или вызывать методы, которые ему не нужны.
+- `AccessService` использует **все** методы внедрённых интерфейсов.
