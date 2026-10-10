@@ -55,3 +55,70 @@ class Sha256PasswordHasher : PasswordHasher {
     }
 }
 ```
+### S2. `AccessService.check` выполняет слишком много обязанностей
+
+**Место:** `AccessService.kt` → `AccessService.check()`
+
+Метод `check()` одновременно:
+
+1. Валидирует формат запроса.
+2. Аутентифицирует пользователя.
+3. Парсит действие.
+4. Ищет ресурс.
+5. Ищет эффективное правило.
+6. Проверяет права по действию.
+7. Проверяет объём.
+
+Семь причин для изменения — явное нарушение SRP.
+
+```kotlin
+fun check(request: AccessRequest): Int {
+    if (!ResourceValidator.isValidPath(request.resourcePath) ||
+        !ResourceValidator.isValidVolume(request.volume)
+    ) return EXIT_BAD_FORMAT                                    // 1. валидация
+
+    val user = users.findUser(request.login) ?: return EXIT_BAD_LOGIN
+    if (!users.verifyPassword(user, request.password)) return EXIT_BAD_PASSWORD  // 2. аутентификация
+
+    val action = Action.from(request.action) ?: return EXIT_UNKNOWN_ACTION       // 3. парсинг
+
+    val resource = resources.findResource(request.resourcePath) ?: return EXIT_NO_RESOURCE  // 4. поиск
+    val rule = rules.findEffectiveRule(request.login, request.resourcePath)
+        ?: return EXIT_NO_ACCESS                                // 5. поиск правила
+
+    val permitted = when (action) {                             // 6. проверка прав
+        Action.READ -> rule.canRead
+        Action.WRITE -> rule.canWrite
+        Action.EXECUTE -> rule.canExecute
+    }
+    if (!permitted) return EXIT_NO_ACCESS
+
+    if (request.volume > resource.maxVolume) return EXIT_VOLUME_EXCEEDED  // 7. объём
+
+    return EXIT_SUCCESS
+}
+```
+
+**Решение.** Разбить на компоненты с единственной ответственностью:
+
+- `RequestValidator` — валидация запроса.
+- `Authenticator` — аутентификация.
+- `ResourceFinder` — поиск ресурса.
+- `AccessResolver` — определение правила и проверка прав.
+- `AccessService` — тонкий оркестратор, вызывающий их по цепочке.
+
+```kotlin
+class AccessService(
+    private val validator: RequestValidator,
+    private val authenticator: Authenticator,
+    private val resourceFinder: ResourceFinder,
+    private val accessResolver: AccessResolver
+) {
+    fun check(request: AccessRequest): Int {
+        validator.validate(request)?.let { return it }
+        val user = authenticator.authenticate(request) ?: return EXIT_BAD_LOGIN
+        val resource = resourceFinder.find(request.resourcePath) ?: return EXIT_NO_RESOURCE
+        return accessResolver.resolve(user, resource, request)
+    }
+}
+```
