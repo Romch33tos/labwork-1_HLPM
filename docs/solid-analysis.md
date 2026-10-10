@@ -254,3 +254,50 @@ data class User(
 ```
 
 Теперь `User` можно сделать `data class` без кастомных `equals`/`hashCode`.
+
+## O — Open/Closed Principle
+
+> Классы должны быть открыты для расширения, но закрыты для изменения.
+
+### O1. `when (action)` в `AccessService.check`
+
+**Место:** `AccessService.kt` → `AccessService.check()`
+
+```kotlin
+val permitted = when (action) {
+    Action.READ -> rule.canRead
+    Action.WRITE -> rule.canWrite
+    Action.EXECUTE -> rule.canExecute
+}
+```
+
+При добавлении нового действия (например, `DELETE`) придётся:
+
+1. Добавить `DELETE` в `enum Action`.
+2. Дописать ветку `when` в `AccessService`.
+3. Добавить поле `canDelete` в `AccessRule`.
+
+Три изменения в трёх классах ради одного нового действия — класс не закрыт для модификации.
+
+**Решение.** Вынести проверку в полиморфизм — каждая `Action` знает, как проверить себя:
+
+```kotlin
+// domain/model/Action.kt
+enum class Action(private val check: (AccessRule) -> Boolean) {
+    READ({ it.canRead }),
+    WRITE({ it.canWrite }),
+    EXECUTE({ it.canExecute });
+
+    fun isPermittedBy(rule: AccessRule): Boolean = check(rule)
+
+    companion object {
+        fun from(value: String): Action? =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+    }
+}
+
+// AccessService
+if (!action.isPermittedBy(rule)) return EXIT_NO_ACCESS
+```
+
+Теперь новое действие = одна строка в enum. `AccessService` не меняется.
