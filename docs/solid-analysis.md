@@ -166,3 +166,45 @@ fun main(args: Array<String>) {
     exitProcess(service.check(request))
 }
 ```
+### S4. `Cli.kt` совмещает константы, парсер и справку
+
+**Место:** `Cli.kt`
+
+Файл содержит четыре категории кода:
+
+```kotlin
+// 1. Константы кодов возврата
+const val EXIT_SUCCESS = 0
+const val EXIT_HELP = 1
+// ... и ещё 7 констант
+
+// 2. Список обязательных ключей
+val REQUIRED_KEYS = listOf("--login", "--password", "--action", "--resource", "--volume")
+
+// 3. Парсер
+fun parseKeyValues(args: Array<String>): Map<String, String>? { /* ... */ }
+
+// 4. Вывод справки
+fun printHelp() { /* ... */ }
+```
+
+Изменение формата справки, парсера или кодов возврата — три независимые причины для правки одного файла.
+
+**Решение.** Разделить на три файла:
+
+```kotlin
+// presentation/cli/ExitCode.kt
+enum class ExitCode(val code: Int) {
+    SUCCESS(0), HELP(1), BAD_PASSWORD(2), BAD_LOGIN(3),
+    UNKNOWN_ACTION(4), NO_ACCESS(5), NO_RESOURCE(6),
+    BAD_FORMAT(7), VOLUME_EXCEEDED(8)
+}
+
+// presentation/cli/CliParser.kt
+class CliParser {
+    fun parse(args: Array<String>): Map<String, String>? { /* ... */ }
+}
+
+// presentation/cli/HelpPrinter.kt
+object HelpPrinter { fun print() { /* ... */ } }
+```
