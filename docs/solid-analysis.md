@@ -347,3 +347,36 @@ enum class CliArgument(val key: String, val required: Boolean) {
 ```
 
 Теперь `Main.kt` обращается к `CliArgument.LOGIN.key`, а список обязательных ключей генерируется автоматически.
+
+### O3. Regex в `ResourceValidator` захардкожен
+
+**Место:** `Validator.kt` → `object ResourceValidator`
+
+```kotlin
+object ResourceValidator {
+    private val namePattern = Regex("^[A-Za-z0-9_]{1,20}$")
+
+    fun isValidName(name: String): Boolean = namePattern.matches(name)
+    fun isValidPath(path: String): Boolean { /* ... */ }
+    fun isValidVolume(volume: Int): Boolean = volume > 0
+}
+```
+
+Правила валидации (допустимые символы, длина имени, минимальный объём) жёстко вшиты в код. Изменение правил = правка класса. Класс не закрыт для расширения.
+
+**Решение.** Вынести правила в конфигурацию, внедряемую через конструктор:
+
+```kotlin
+// domain/validation/ValidationRules.kt
+data class ValidationRules(
+    val namePattern: Regex = Regex("^[A-Za-z0-9_]{1,20}$"),
+    val minVolume: Int = 1
+)
+
+// application/validation/RequestValidator.kt
+class RequestValidator(private val rules: ValidationRules) {
+    fun validate(request: AccessRequest): ExitCode? { /* ... */ }
+}
+```
+
+Теперь правила валидации можно менять без правки классов.
