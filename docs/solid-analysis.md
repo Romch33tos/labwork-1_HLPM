@@ -467,3 +467,49 @@ class StorageUserRepository(
 ```
 
 `UserStorage` и `PasswordHasher` — интерфейсы в доменном слое. Конкретные `InMemoryUserStorage` и `Sha256PasswordHasher` создаются в composition root (`Main`).
+
+### D2. `AccessService` зависит от `ResourceValidator` напрямую
+
+**Место:** `AccessService.kt` → `AccessService.check()`
+
+```kotlin
+fun check(request: AccessRequest): Int {
+    if (!ResourceValidator.isValidPath(request.resourcePath) ||
+        !ResourceValidator.isValidVolume(request.volume)
+    ) {
+        return EXIT_BAD_FORMAT
+    }
+    // ...
+}
+```
+
+`ResourceValidator` — это `object` (глобальный синглтон). `AccessService` жёстко привязан к конкретной реализации валидатора:
+
+- нельзя заменить правила валидации без правки `Validator.kt`;
+- нельзя подменить валидатор в тестах (например, на заглушку);
+- `AccessService` зависит от модуля нижнего уровня напрямую, что нарушает DIP.
+
+**Решение.** Ввести интерфейс `RequestValidator` в слое приложения и внедрять его через конструктор:
+
+```kotlin
+// application/validation/RequestValidator.kt
+interface RequestValidator {
+    fun validate(request: AccessRequest): ExitCode?
+}
+
+// infrastructure/validation/RegexRequestValidator.kt
+class RegexRequestValidator(private val rules: ValidationRules) : RequestValidator {
+    override fun validate(request: AccessRequest): ExitCode? { /* ... */ }
+}
+
+// application/AccessService.kt
+class AccessService(
+    private val validator: RequestValidator,
+    // ...
+) {
+    fun check(request: AccessRequest): Int {
+        validator.validate(request)?.let { return it.code }
+        // ...
+    }
+}
+```
