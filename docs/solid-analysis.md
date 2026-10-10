@@ -208,3 +208,49 @@ class CliParser {
 // presentation/cli/HelpPrinter.kt
 object HelpPrinter { fun print() { /* ... */ } }
 ```
+### S5. `User` совмещает данные и логику сравнения `ByteArray`
+
+**Место:** `Models.kt` → `class User`
+
+Класс хранит доменные данные (`login`, `salt`, `passwordHash`) и одновременно содержит кастомную реализацию `equals`/`hashCode` исключительно ради корректного сравнения `ByteArray`:
+
+```kotlin
+class User(
+    val login: String,
+    val salt: ByteArray,
+    val passwordHash: ByteArray
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is User) return false
+        return login == other.login &&
+            salt.contentEquals(other.salt) &&
+            passwordHash.contentEquals(other.passwordHash)
+    }
+
+    override fun hashCode(): Int { /* ... */ }
+}
+```
+
+Это смешение двух ролей: «модель пользователя» и «сравнение бинарных данных».
+
+**Решение.** Ввести value-класс `PasswordHash`, который сам умеет сравниваться:
+
+```kotlin
+// domain/model/PasswordHash.kt
+@JvmInline
+value class PasswordHash(private val bytes: ByteArray) {
+    override fun equals(other: Any?) =
+        other is PasswordHash && bytes.contentEquals(other.bytes)
+    override fun hashCode() = bytes.contentHashCode()
+}
+
+// domain/model/User.kt
+data class User(
+    val login: String,
+    val salt: ByteArray,
+    val passwordHash: PasswordHash
+)
+```
+
+Теперь `User` можно сделать `data class` без кастомных `equals`/`hashCode`.
