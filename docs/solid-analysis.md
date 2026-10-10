@@ -559,3 +559,18 @@ fun main(args: Array<String>) {
     exitProcess(service.check(parseAndValidate(args)))
 }
 ```
+## Сводная таблица нарушений
+
+| №  | Принцип | Место                              | Краткое описание                              |
+|----|---------|------------------------------------|-----------------------------------------------|
+| S1 | SRP     | `Storage.kt` → `Storage`           | Хранение + поиск + криптография               |
+| S2 | SRP     | `AccessService.kt` → `check()`     | 7 обязанностей в одном методе                 |
+| S3 | SRP     | `Main.kt` → `main()`               | Парсинг + валидация + сборка + exit           |
+| S4 | SRP     | `Cli.kt`                           | Константы + парсер + help в одном файле       |
+| S5 | SRP     | `Models.kt` → `User`               | Данные + equals/hashCode для ByteArray        |
+| O1 | OCP     | `AccessService.kt` → `when(action)`| Новое действие → правка кода                  |
+| O2 | OCP     | `Cli.kt` + `Main.kt`               | `REQUIRED_KEYS` и ключи продублированы        |
+| O3 | OCP     | `Validator.kt` → `Regex`           | Regex захардкожен                             |
+| D1 | DIP     | `StorageXxxRepository`             | Зависимость от синглтона `Storage`            |
+| D2 | DIP     | `AccessService` → `ResourceValidator` | Зависимость от `object` вместо абстракции  |
+| D3 | DIP     | `Main.kt`                          | Сборка графа смешана с парсингом              |
