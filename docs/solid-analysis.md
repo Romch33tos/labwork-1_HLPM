@@ -574,3 +574,35 @@ fun main(args: Array<String>) {
 | D1 | DIP     | `StorageXxxRepository`             | Зависимость от синглтона `Storage`            |
 | D2 | DIP     | `AccessService` → `ResourceValidator` | Зависимость от `object` вместо абстракции  |
 | D3 | DIP     | `Main.kt`                          | Сборка графа смешана с парсингом              |
+
+## План рефакторинга
+
+Порядок шагов выбран так, чтобы после каждого этапа проект оставался работоспособным.
+
+1. **Выделить доменные value-классы:**
+   - `ResourcePath` — инкапсулирует парсинг и валидацию пути.
+   - `PasswordHash` — инкапсулирует сравнение хешей.
+   - `Action` — перевести на полиморфную проверку прав.
+
+2. **Разделить `Storage`:**
+   - `InMemoryUserStorage`, `InMemoryResourceStorage`, `InMemoryRuleStorage`.
+   - `Sha256PasswordHasher` — отдельная реализация `PasswordHasher`.
+
+3. **Ввести абстракции в слое приложения:**
+   - `PasswordHasher`, `RequestValidator`, `Authenticator`, `AccessResolver`, `EffectiveRuleResolver`.
+
+4. **Разбить `AccessService.check()` на цепочку use case'ов:**
+   - `CheckAccessUseCase`, который последовательно вызывает `RequestValidator`, `Authenticator`, `AccessResolver`.
+
+5. **Устранить `when(action)`** через полиморфизм `Action`.
+
+6. **Централизовать описание CLI-аргументов:**
+   - `enum class CliArgument(key, required, description)`.
+
+7. **Разделить `Cli.kt`:**
+   - `ExitCode.kt`, `CliParser.kt`, `HelpPrinter.kt`.
+
+8. **Пересобрать `Main.kt`:**
+   - `CliArgumentParser`, `CliArgumentValidator`, `ApplicationFactory`, тонкий `main()`.
+
+9. **Внедрить зависимости через конструкторы** вместо синглтонов.
