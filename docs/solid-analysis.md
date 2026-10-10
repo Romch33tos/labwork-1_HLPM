@@ -301,3 +301,49 @@ if (!action.isPermittedBy(rule)) return EXIT_NO_ACCESS
 ```
 
 Теперь новое действие = одна строка в enum. `AccessService` не меняется.
+
+### O2. `REQUIRED_KEYS` и строковые ключи CLI продублированы
+
+**Место:** `Cli.kt` → `REQUIRED_KEYS`; `Main.kt` → `map["--login"]` и т.д.
+
+Список обязательных ключей живёт в `Cli.kt`:
+
+```kotlin
+val REQUIRED_KEYS = listOf("--login", "--password", "--action", "--resource", "--volume")
+```
+
+А сами строковые литералы используются в `Main.kt`:
+
+```kotlin
+val code = service.check(
+    AccessRequest(
+        login = map["--login"]!!,
+        password = map["--password"]!!,
+        action = map["--action"]!!,
+        resourcePath = map["--resource"]!!,
+        volume = volume
+    )
+)
+```
+
+Добавление нового обязательного аргумента требует правок в двух местах.
+
+**Решение.** Единый источник правды — `enum class`:
+
+```kotlin
+// presentation/cli/CliArgument.kt
+enum class CliArgument(val key: String, val required: Boolean) {
+    LOGIN("--login", true),
+    PASSWORD("--password", true),
+    ACTION("--action", true),
+    RESOURCE("--resource", true),
+    VOLUME("--volume", true),
+    HELP("--help", false);
+
+    companion object {
+        val requiredKeys = entries.filter { it.required }.map { it.key }
+    }
+}
+```
+
+Теперь `Main.kt` обращается к `CliArgument.LOGIN.key`, а список обязательных ключей генерируется автоматически.
